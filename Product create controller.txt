@@ -1,0 +1,141 @@
+using Lab_So_Web.Models;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Data;
+using System.Data.Entity;
+using System.Data.Entity.Migrations;
+using System.Data.Entity.Validation;
+using System.Data.SqlClient;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Web.Mvc;
+using static Lab_So_Web.CustomAttributes.ValidateUser;
+//using System.Data;
+//using System.Data.SqlClient;
+//using System.Configuration;
+
+
+namespace Lab_So_Web.Controllers
+{
+    public class ProductMasterController : MyController
+    {
+        private LABSO_DBEntities db = new LABSO_DBEntities();
+        APICall api = new APICall();
+        string constr = ConfigurationManager.ConnectionStrings["LABSO_SqlCon"].ConnectionString;
+
+
+        public string GetBaseUrl()
+        {
+            var request = System.Web.HttpContext.Current.Request;
+
+            return string.Format("{0}://{1}{2}", Request.Url.Scheme, Request.Url.Authority, Url.Content("~"));
+        }
+
+        public ActionResult Index()
+        {
+            return View();
+        }
+
+        [SkipMyGlobalActionFilter]
+        public JsonResult FetchProductMaster()
+        {
+            try
+            {
+                DataSet ds = new DataSet();
+
+                using (SqlConnection conn = new SqlConnection(constr))
+                {
+                    SqlCommand sqlComm = new SqlCommand("USP_PRODUCT_MASTER", conn);
+                    sqlComm.Parameters.AddWithValue("@Type", "FETCH_PRODUCT_MASTER");
+                    sqlComm.Parameters.AddWithValue("@Product", StaffCompanyId);
+                    sqlComm.CommandType = CommandType.StoredProcedure;
+                    SqlDataAdapter da = new SqlDataAdapter();
+                    da.SelectCommand = sqlComm;
+                    da.Fill(ds);
+                }
+
+                var ProdMaster = (from DataRow rs in ds.Tables[0].Rows
+                                   select new Product_Master
+                                   {
+                                       ProductId = Convert.ToInt32(rs["ProductId"]),
+                                       ProductCode = rs["ProductCode"].ToString(),
+                                       ProductName = rs["ProductName"].ToString(),
+                                       ShortName = rs["ShortName"].ToString(),
+                                    
+                                       Category = rs["Category"].ToString(),
+                                       Type = rs["Type"].ToString(),
+                                   
+                                   }).ToList();
+
+                return Json(ProdMaster);
+            }
+            catch (Exception ex)
+            {
+                return Json(ex.Message);
+            }
+        }
+ 
+        public ActionResult Create()
+        {
+            ViewBag.ShowNav = ((Session["ProdId"] != null) ? (Session["ProdId"].ToString().Length - Session["ProdId"].ToString().Replace("-", "").Length).ToString() : "0");
+            ViewBag.GroupNameId = new SelectList(db.tbl_GroupNameMaster.Where(x => x.OrgId == null || x.OrgId == StaffCompanyId), "Id", "GroupName");
+            ViewBag.ProcessLocation = new SelectList(db.tbl_LabMaster.Where(x => x.Status == true), "Id", "Code");
+            ViewBag.MethodologyId = new SelectList(db.tbl_MethodologyMaster, "Id", "Methodology");
+            ViewBag.Category = new SelectList(db.tbl_ProductCategoryMaster, "Id", "Category");
+            ViewBag.ProductType = new SelectList(db.tbl_ProductType, "Id", "Type");
+            ViewBag.Status = new SelectList(db.tbl_ProductStatusMaster, "StatusId", "StatusValue");
+            ViewBag.TechnologyId = new SelectList(db.tbl_TechnologyMaster, "Id", "Technology");
+            ViewBag.Gender = new SelectList(db.tbl_Gender, "Id", "Gender");
+
+            var dbUnits = (from a in db.tbl_ProductMaster
+                           where a.Units != null && a.Units.Trim() != string.Empty
+                           select new DDL_List
+                           {
+                               TextField = a.Units,
+                               ValueField = a.Units
+                           }).Distinct().ToList();
+            var dbFreq = (from a in db.tbl_ProductMaster
+                           where a.Frequency != null && a.Frequency.Trim() != string.Empty
+                           select new DDL_List
+                           {
+                               TextField = a.Frequency,
+                               ValueField = a.Frequency
+                           }).Distinct().ToList();
+
+            ViewBag.Units = new SelectList(dbUnits, "ValueField", "TextField");
+            ViewBag.Frequency = new SelectList(dbFreq, "ValueField", "TextField");
+
+            if (Session["ProdId"] != null)
+            {
+                string[] lstProd = Session["ProdId"].ToString().Split('-');
+
+                if (lstProd.Length > 0)
+                {
+                    tbl_ProductMaster tbl_ProductMaster = db.tbl_ProductMaster.Find(Convert.ToInt32(lstProd[0]));
+                    if (tbl_ProductMaster != null)
+                    {
+                        ViewBag.hdnUnit = (string.IsNullOrEmpty(tbl_ProductMaster.Units) ? string.Empty : tbl_ProductMaster.Units);
+                        ViewBag.hdnFreq = (string.IsNullOrEmpty(tbl_ProductMaster.Frequency) ? string.Empty : tbl_ProductMaster.Frequency);
+                        ViewBag.hdnType = (tbl_ProductMaster.ProductType == 0 ? string.Empty : tbl_ProductMaster.ProductType.ToString());
+                        ViewBag.hdnStat = tbl_ProductMaster.Status.ToString();
+                        ViewBag.hdnGrpN = ((tbl_ProductMaster.GroupNameId == null || tbl_ProductMaster.GroupNameId == 0) ? string.Empty : tbl_ProductMaster.GroupNameId.ToString());
+                        ViewBag.hdnLabN = (tbl_ProductMaster.ProcessLocation == 0 ? string.Empty : tbl_ProductMaster.ProcessLocation.ToString());
+                        ViewBag.hdnCate = (tbl_ProductMaster.Category == 0 ? string.Empty : tbl_ProductMaster.Category.ToString());
+                        ViewBag.hdnTech = ((tbl_ProductMaster.TechnologyId == null || tbl_ProductMaster.TechnologyId == 0) ? string.Empty : tbl_ProductMaster.TechnologyId.ToString());
+                        ViewBag.hdnMthG = ((tbl_ProductMaster.MethodologyId == null || tbl_ProductMaster.MethodologyId == 0) ? string.Empty : tbl_ProductMaster.MethodologyId.ToString());
+                        ViewBag.hdnGndr = tbl_ProductMaster.Gender.ToString();
+
+                        if (tbl_ProductMaster.AgeFrom > 1)
+                            tbl_ProductMaster.AgeFrom = Convert.ToInt32(tbl_ProductMaster.AgeFrom / 365);
+                        if (tbl_ProductMaster.AgeTo > 1)
+                            tbl_ProductMaster.AgeTo = Convert.ToInt32(tbl_ProductMaster.AgeTo / 365);
+
+                        return View(tbl_ProductMaster);
+                    }
+                }
+            }
+
+            return View();
+        }

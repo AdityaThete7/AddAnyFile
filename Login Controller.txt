@@ -1,0 +1,200 @@
+using System;
+using System.Globalization;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using System.Web;
+using System.Web.Mvc;
+using Microsoft.AspNet.Identity;
+using Microsoft.AspNet.Identity.Owin;
+using Microsoft.Owin.Security;
+using System.Data;
+using Lab_So_Web.Models;
+using static Lab_So_Web.CustomAttributes.ValidateUser;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Security.Cryptography;
+using Newtonsoft.Json;
+
+namespace Lab_So_Web.Controllers
+{
+    
+    //[Authorize]
+    public class AccountController : Controller
+    {
+        LABSO_DBEntities db = new LABSO_DBEntities();
+        MailGen mg = new MailGen();
+        Function fnc = new Function();
+        string domain = ConfigurationManager.AppSettings["Application"].ToString();
+
+        private ApplicationSignInManager _signInManager;
+        private ApplicationUserManager _userManager;
+
+        public AccountController()
+        {
+        }
+
+        public AccountController(ApplicationUserManager userManager, ApplicationSignInManager signInManager)
+        {
+            UserManager = userManager;
+            SignInManager = signInManager;
+        }
+
+        public ApplicationSignInManager SignInManager
+        {
+            get
+            {
+                return _signInManager ?? HttpContext.GetOwinContext().Get<ApplicationSignInManager>();
+            }
+            private set
+            {
+                _signInManager = value;
+            }
+        }
+
+ 
+ 
+
+        //
+        // GET: /Account/Login
+
+        //[AllowAnonymous]
+        //public ActionResult Login(string returnUrl)
+        //{
+        //    //ViewBag.ReturnUrl = returnUrl;
+        //    ////Session["UserCode"] = "E2727";
+        //    //if (Session["UserCode"] == null)
+        //    //{
+        //    //    return View();
+        //    //}
+        //    //else
+        //    //{
+        //    //    return Redirect(returnUrl);
+        //    //}
+        //    //return RedirectToAction("", "Login");
+
+        //    return View();
+        //}
+        [SkipMyGlobalActionFilter]
+        public ActionResult Login()
+        {
+            return View();
+        }
+        [SkipMyGlobalActionFilter]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Login(LoginUser log, string returnUrl)
+        {
+            if (ModelState.IsValid)
+            {
+                //return this.View(log);
+                //return this.RedirectToLocal(returnUrl);
+                //var emp = (from ln in db.tbl_UserLogin join em in db.tbl_EmployeeMaster on ln.UserCode equals em.Ecode
+                //           where ln.UserCode.ToUpper() == log.UserCode.ToUpper() && ln.Password.ToUpper() == log.PassWord.ToUpper()
+                //           && ln.Status == true && em.Status=="Y"
+                //           select new { ln.UserCode,ln.Password,em.Name,ln.RoleId}).FirstOrDefault();
+
+                log.Domain = domain;
+                EmpDetail _emp = ValidateLoginCredentials(log);
+                // var emp = checkSession(log.UserCode.ToUpper(), log.PassWord.ToUpper());
+                if (_emp != null && _emp.UserCode != null && _emp.UserCode != "")
+                {
+                    setUserSession(_emp);
+                    /*
+                    List<Menu> _menus = (from x in db.Usp_MenuList(emp.RoleId)
+                                         select new Menu
+                                         {
+                                             MainMenuId = x.Mainmenuid,
+                                             MainMenuName = x.MainMenu,
+                                             SubMenuId = x.Submenuid,
+                                             SubMenuName = x.menuname,
+                                             ControllerName = x.controller,
+                                             ActionName = x.action,
+                                             RoleId = x.roleid,
+                                             FontIcon = x.FontIcon
+                                             //RoleName = x.tblRole.Roles
+                                         }).ToList(); //Get the Menu details from entity and bind it in MenuModels list.
+
+                    Session["MenuMaster"] = _menus;
+
+                    Session["UserCode"] = emp.UserCode;
+                    Session["UserName"] = emp.Name;
+                    Session["PassKey"] = emp.PassKey;
+                    Session["RoleId"] = emp.RoleId;
+                    Session["StaffLocationId"] = emp.LocationId;
+                    Session["StaffLocation"] = emp.Location;
+                    Session["StaffCompanyId"] = emp.CompanyId;
+                    */
+                    //return this.View(log);
+                    return RedirectToAction("Index", "Dashboard");
+                }
+                else
+                {
+                    return Content("<script language='javascript' type='text/javascript'>alert('Invalid User name or Password . Please try again !');window.location='" + Url.Action("Login", "Account") + "'</script>");
+                }
+            }
+            return this.View(log);
+        }
+
+        public static EmpDetail ValidateLoginCredentials(LoginUser log)
+        {
+            EmpDetail _emp = null;
+            LABSO_DBEntities db2 = new LABSO_DBEntities();
+            var emp = db2.Usp_ValidateLogin(log.UserCode, log.PassWord, log.Domain).FirstOrDefault();
+
+            if (System.Web.HttpContext.Current.Request.Url.Host == "localhost")
+            {
+                var emp1 = (from a in db2.tbl_UserLogin
+                            join b in db2.tbl_EmployeeMaster on a.UserCode equals b.Ecode
+                            join c in db2.tbl_LocationMaster on b.LocationId equals c.ID
+                            where a.UserCode == log.UserCode
+                            && a.Status == true && b.Status == "Y"
+                            select new { a.UserCode, a.PassKey, a.RoleId, b.Name, Email = b.CompanyEmail, Contact = b.Mobile2, b.CompanyId, LocationId = c.ID, c.Location /*isnull(c.Location, '')*/ }
+                         ).FirstOrDefault();
+                if (emp1 != null)
+                {
+                    emp = new Usp_ValidateLogin_Result() { UserCode = emp1.UserCode, PassKey = emp1.PassKey, RoleId = emp1.RoleId, Name = emp1.Name, Email = emp1.Email, Contact = emp1.Contact, CompanyId = emp1.CompanyId, LocationId = emp1.LocationId, Location = emp1.Location };
+                }
+            }
+
+            // var emp = checkSession(log.UserCode.ToUpper(), log.PassWord.ToUpper());
+            if (emp != null && emp.UserCode != null && emp.UserCode != "")
+            {
+                _emp = new EmpDetail();
+                _emp.CompanyId = Convert.ToInt32(emp.CompanyId);
+                _emp.Contact = emp.Contact;
+                _emp.EmailId = emp.Email;
+                _emp.Location = emp.Location;
+                _emp.LocationId = Convert.ToInt32(emp.LocationId);
+                _emp.PassKey = emp.PassKey.ToString();
+                _emp.RoleId = Convert.ToInt32(emp.RoleId);
+                _emp.UserCode = emp.UserCode;
+                _emp.Name = emp.Name;
+            }
+
+            return _emp;
+        }
+  
+    public class AccountAPIController : System.Web.Http.ApiController
+    {
+        //[Route("api/AccountAPI/Login")]
+        [SkipMyGlobalActionFilter]
+        [HttpPost]
+        public LoginAPIResult Login(LoginUser log)
+        {
+            EmpDetail _emp = AccountController.ValidateLoginCredentials(log);
+
+            if (_emp != null && !String.IsNullOrEmpty(_emp.UserCode))
+            {
+                var locationAccess = Generic.UserWiseLocationList(_emp.UserCode).Select(r => new LocationList { LocationId = r.ID, LocationCode = r.Location }).ToList();
+                LoginAPIResult loginAPIResult = new LoginAPIResult { EmployeeInfo = _emp, LocationAccess = locationAccess, MenuAccess = AccountController.FetchMenuAccess(_emp.RoleId, _emp.UserCode) };
+                return loginAPIResult;
+            }
+            else
+            {
+                return null;
+            }
+        }
+    }
+
+}

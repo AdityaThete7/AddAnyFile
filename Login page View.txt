@@ -1,0 +1,187 @@
+@model Lab_So_Web.Models.LoginUser
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <!-- Meta, title, CSS, favicons, etc. -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Lab-So | Login</title>
+
+    <!-- Bootstrap -->
+    <link href="~/Scripts/vendors/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="~/Scripts/vendors/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+    <!-- NProgress -->
+    <link href="~/Scripts/vendors/nprogress/nprogress.css" rel="stylesheet">
+    <!-- Animate.css -->
+    <link href="~/Scripts/vendors/animate.css/animate.min.css" rel="stylesheet">
+    <!-- Custom Theme Style -->
+    <link href="~/Scripts/build/css/custom.min.css" rel="stylesheet">
+    <link rel="icon" href="~/Images/favicon.ico" />
+    
+    <style type="text/css">
+        body {
+            font-family: Arial;
+            font-size: 10pt;
+        }
+
+        .error {
+            color: red;
+        }
+        #btn_forgotPassword {
+            position: relative;
+            left: 122px;
+            bottom: 39px;
+        }
+    </style>
+</head>
+
+<body class="login">
+
+    <div>
+        @*<a class="hiddenanchor" id="signup"></a>
+        <a class="hiddenanchor" id="signin"></a>*@
+        @*<div class="login_wrapper">*@
+            @*<h1><i class="fa fa-paw"></i> Gentelella Alela!</h1>*@
+            
+            @*</div>*@
+            <div class="login_wrapper">
+                <div class="animate form login_form">
+                    <section class="login_content">
+   @using (Html.BeginForm())
+   {
+    @Html.AntiForgeryToken()
+                        <form>
+                            <h1>Login to Lab - So </h1>
+
+                            <div>
+                                @*<input type="text" id="txtUserCode" class="form-control" placeholder="Username" required="" maxlength="15" />*@
+                                @Html.EditorFor(model => model.UserCode, new { htmlAttributes = new { @class = "form-control", placeholder = "User Name" } })
+                                @Html.ValidationMessageFor(m => m.UserCode, "", new { @class = "error" })
+                            </div>
+                            <div>
+                                @*<input type="password" id="txtPass" class="form-control" placeholder="Password" required="" maxlength="50" />*@
+                                @Html.EditorFor(model => model.PassWord, new { htmlAttributes = new { @class = "form-control", placeholder = "Password", type = "password" } })
+                                @Html.ValidationMessageFor(m => m.PassWord, "", new { @class = "error" })
+                            </div>
+                            <div class="col-md-6" style="text-align:left;display:none" >
+                                @*<a class="btn btn-success submit" href="index.html">Log in</a>*@
+                                <a class="reset_pass" href="/Account/ForgotPassword" style="text-align:left;font-weight:bold;color:teal">
+                                    Forgot password?</a>
+                              
+
+                            </div>
+                            <div class="col-md-6" style="text-align:right">
+                                @*<a class="btn btn-success submit" href="index.html">Log in</a>*@
+                                
+                                <input type="submit" value="Log In" class="btn btn-success submit" onclick="return doLogin()"/>
+                                <input type="button" id="btn_forgotPassword" value="Forgot Password" class="btn btn-success submit" onclick="forgotPassword()" />
+                                @*<a class="reset_pass" href="#">Lost your password?</a>*@
+                            </div>
+
+                            <div class="clearfix"></div>
+
+                            <div class="separator">
+                                @*<p class="change_link">
+                                    New to site?
+                                    <a href="#signup" class="to_register"> Create Account </a>
+                                </p>*@
+
+                                <div class="clearfix"></div>
+                                <br />
+
+                                <div>
+                                    <img src="~/Images/Thyrocare_Logo_new.PNG" />
+                                    <br /> <br />
+                                    @*<p>©2016 All Rights Reserved. Gentelella Alela! is a Bootstrap 3 template. Privacy and Terms</p>*@
+                                    <p>Copyright © 2018 - @DateTime.Now.Year | Dr A Velumani - Thyrocare Technologies Limited. All rights reserved .</p>
+                                </div>
+                            </div>
+                        </form>
+   }
+                    </section>
+                </div>
+
+                @*<div id="register" class="animate form registration_form">
+                    <section class="login_content">
+                        <form>
+                            <h1>Create Account</h1>
+                            <div>
+                                <input type="text" class="form-control" placeholder="Username" required="" />
+                            </div>
+                            <div>
+                                <input type="email" class="form-control" placeholder="Email" required="" />
+                            </div>
+                            <div>
+                                <input type="password" class="form-control" placeholder="Password" required="" />
+                            </div>
+                            <div>
+                                <a class="btn btn-default submit" href="index.html">Submit</a>
+                            </div>
+
+                            <div class="clearfix"></div>
+
+                            <div class="separator">
+                                <p class="change_link">
+                                    Already a member ?
+                                    <a href="#signin" class="to_register"> Log in </a>
+                                </p>
+
+                                <div class="clearfix"></div>
+                                <br />
+
+                                <div>
+                                    <h1><i class="fa fa-paw"></i> Gentelella Alela!</h1>
+                                    <p>©2016 All Rights Reserved. Gentelella Alela! is a Bootstrap 3 template. Privacy and Terms</p>
+                                </div>
+                            </div>
+                        </form>
+                    </section>
+                </div>*@
+            </div>
+        </div>
+
+</body>
+
+</html>
+<script language="javascript" type="text/javascript">
+    function doLogin(){
+        //alert('testing');
+        //alert(document.getElementById("UserCode").value.trim());
+        //alert(document.getElementById("UserCode").value.trim().length);
+
+        if (document.getElementById("UserCode").value.trim() == "")
+        {
+            alert("Please enter the User Name!!!");
+            document.getElementById("UserCode").focus();
+            return false;
+        }
+        else if (document.getElementById("UserCode").value.trim().length<3) {
+            alert("Please enter proper User Name!!!");
+            document.getElementById("UserCode").focus();
+            return false;
+        }
+        else if (document.getElementById("PassWord").value.trim() == "") {
+            alert("Please enter the Password !!!");
+            document.getElementById("PassWord").focus();
+            return false;
+        }
+        else if (document.getElementById("PassWord").value.trim().length < 3) {
+            alert("Please enter proper Password!!!");
+            document.getElementById("PassWord").focus();
+            return false;
+        }
+
+    }
+     function forgotPassword() {
+        window.location.href='@Url.Action("Index", "ForgotPassword")';
+    }
+</script>
